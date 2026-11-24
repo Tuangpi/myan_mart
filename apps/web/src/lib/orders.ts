@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@myanmart/shared';
+import { ApiRequestError, apiRequest, jsonRequest } from './api-client';
 
 export class OrderRequestError extends Error {
   constructor(readonly status: number) {
@@ -12,19 +12,16 @@ export async function requestOrder<T>(
   signal?: AbortSignal,
   method?: 'PATCH',
 ): Promise<T> {
-  const response = await fetch(path, {
-    method: method ?? (body === undefined ? 'GET' : 'POST'),
-    credentials: 'include',
-    signal,
-    ...(body === undefined
-      ? {}
-      : body instanceof FormData
-        ? { body }
-        : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-  });
-  const json = (await response.json()) as ApiResponse<T>;
-  if (!response.ok || !json.success) throw new OrderRequestError(response.status);
-  return json.data;
+  try {
+    return await apiRequest<T>(path, {
+      method: method ?? (body === undefined ? 'GET' : 'POST'),
+      signal,
+      ...(body === undefined ? {} : body instanceof FormData ? { body } : jsonRequest(body)),
+    });
+  } catch (error) {
+    if (error instanceof ApiRequestError) throw new OrderRequestError(error.status);
+    throw error;
+  }
 }
 
 export function checkoutErrorKey(error: unknown): string {

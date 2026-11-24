@@ -1,4 +1,5 @@
-import type { ApiResponse, CartResponse } from '@myanmart/shared';
+import type { CartResponse } from '@myanmart/shared';
+import { ApiRequestError, apiRequest, jsonRequest } from './api-client';
 
 export class CartRequestError extends Error {
   constructor(readonly status: number) {
@@ -12,17 +13,16 @@ export async function requestCart(
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<CartResponse> {
-  const response = await fetch(path, {
-    method,
-    credentials: 'include',
-    ...(body === undefined
-      ? {}
-      : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-    signal,
-  });
-  const json = (await response.json()) as ApiResponse<CartResponse>;
-  if (!response.ok || !json.success) throw new CartRequestError(response.status);
-  return json.data;
+  try {
+    return await apiRequest<CartResponse>(path, {
+      method,
+      signal,
+      ...(body === undefined ? {} : jsonRequest(body)),
+    });
+  } catch (error) {
+    if (error instanceof ApiRequestError) throw new CartRequestError(error.status);
+    throw error;
+  }
 }
 
 export function cartErrorKey(error: unknown): string {

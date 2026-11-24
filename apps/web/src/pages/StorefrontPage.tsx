@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useI18n, type StoreResponse, type ProductSummary, type Paginated } from '@myanmart/shared';
 import { I18nLayout } from '../layouts/I18nLayout';
+import { ApiRequestError, apiRequest } from '../lib/api-client';
 import { formatMMK } from '../lib/format';
 
 class StorefrontError extends Error {
@@ -10,11 +11,12 @@ class StorefrontError extends Error {
 }
 
 async function load<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new StorefrontError(response.status);
-  const body = await response.json();
-  if (!body.success || !body.data) throw new StorefrontError(500);
-  return body.data as T;
+  try {
+    return await apiRequest<T>(url, { signal });
+  } catch (error) {
+    if (error instanceof ApiRequestError) throw new StorefrontError(error.status);
+    throw error;
+  }
 }
 
 function StorefrontContent({ slug }: { slug: string }) {

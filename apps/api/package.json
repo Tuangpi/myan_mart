@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rimraf dist *.tsbuildinfo"
+    "clean": "rimraf dist *.tsbuildinfo",
+    "seed": "prisma db seed"
   },
   "dependencies": {
     "@myanmart/shared": "*",

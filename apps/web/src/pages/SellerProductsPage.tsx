@@ -6,6 +6,7 @@ import {
   type ProductStatus,
 } from '@myanmart/shared';
 import { I18nLayout } from '../layouts/I18nLayout';
+import { ApiRequestError, apiRequest, jsonRequest } from '../lib/api-client';
 
 interface SellerProduct {
   id: string;
@@ -21,10 +22,12 @@ interface SellerProduct {
 const empty = { name: '', slug: '', description: '', price: '', stock: '0', categoryId: '' };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: 'include', ...init });
-  const body = await res.json();
-  if (!res.ok || !body.success) throw new Error(String(res.status));
-  return body.data as T;
+  try {
+    return await apiRequest<T>(url, init);
+  } catch (error) {
+    if (error instanceof ApiRequestError) throw new Error(String(error.status));
+    throw error;
+  }
 }
 
 function SellerProductsContent() {
@@ -99,8 +102,7 @@ function SellerProductsContent() {
         editing ? `/api/seller/products/${editing}` : '/api/seller/products',
         {
           method: editing ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          ...jsonRequest({
             ...form,
             slug: form.slug || undefined,
             price: Number(form.price),
@@ -123,8 +125,7 @@ function SellerProductsContent() {
     void run(async () => {
       await api(`/api/seller/products/${product.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: next }),
+        ...jsonRequest({ status: next }),
       });
     });
   return (

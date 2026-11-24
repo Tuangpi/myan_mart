@@ -122,11 +122,10 @@ describe('storefront', () => {
     expect(await screen.findByText('Green tea')).toBeInTheDocument();
   });
   it('opens the hash route and responds to navigation between stores', async () => {
-    window.history.replaceState(null, '', '/#/stores/tea-shop');
+    window.location.hash = '#/stores/tea-shop';
     render(<App />);
     await screen.findByText('Green tea');
-    window.history.replaceState(null, '', '/#/stores/other%20shop');
-    fireEvent(window, new HashChangeEvent('hashchange'));
+    window.location.hash = '#/stores/other%20shop';
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith('/api/stores/other%20shop', expect.anything()),
     );

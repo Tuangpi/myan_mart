@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '@myanmart/shared';
 import type { ProductDetail } from '@myanmart/shared';
 import { I18nLayout } from '../layouts/I18nLayout';
+import { apiRequest } from '../lib/api-client';
 import { formatMMK } from '../lib/format';
 import { cartErrorKey, requestCart } from '../lib/cart';
 
@@ -15,7 +16,12 @@ interface ProductDetailPageProps {
 
 function resolveId(props: ProductDetailPageProps): string {
   const fromProps =
-    props.id || props.productId || props.slug || props.productSlug || props.product?.id || props.product?.slug;
+    props.id ||
+    props.productId ||
+    props.slug ||
+    props.productSlug ||
+    props.product?.id ||
+    props.product?.slug;
   if (fromProps) return fromProps;
   if (typeof window === 'undefined') return '';
   try {
@@ -78,16 +84,10 @@ function ProductDetailContent(props: ProductDetailPageProps) {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    fetch(`/api/products/${encodeURIComponent(id)}`)
-      .then((r) => r.json())
-      .then((json) => {
+    apiRequest<ProductDetail>(`/api/products/${encodeURIComponent(id)}`)
+      .then((product) => {
         if (cancelled) return;
-        if (json?.success && json.data) {
-          setProduct(json.data as ProductDetail);
-        } else {
-          setError(true);
-          setProduct(null);
-        }
+        setProduct(product);
       })
       .catch(() => {
         if (cancelled) return;
@@ -163,7 +163,12 @@ function ProductDetailContent(props: ProductDetailPageProps) {
             </div>
 
             {product.stock > 0 ? (
-              <button type="button" disabled={adding} onClick={() => void addToCart()} className="bg-primary text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50">
+              <button
+                type="button"
+                disabled={adding}
+                onClick={() => void addToCart()}
+                className="bg-primary text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50"
+              >
                 {t('product.addToCart')}
               </button>
             ) : (
@@ -176,7 +181,11 @@ function ProductDetailContent(props: ProductDetailPageProps) {
               </button>
             )}
 
-            {cartMessage && <p role={cartFailed ? 'alert' : 'status'} className="mt-3">{t(cartMessage)}</p>}
+            {cartMessage && (
+              <p role={cartFailed ? 'alert' : 'status'} className="mt-3">
+                {t(cartMessage)}
+              </p>
+            )}
 
             <div className="mt-6">
               <h3 className="font-semibold text-gray-900 mb-2">{t('product.description')}</h3>
