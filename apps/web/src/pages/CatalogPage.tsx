@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useI18n } from '@myanmart/shared';
-import type { CategoryResponse, ProductSummary, Paginated } from '@myanmart/shared';
+import { ArrowDownUp, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  useI18n,
+  type CategoryResponse,
+  type Paginated,
+  type ProductSummary,
+} from '@myanmart/shared';
+import { ProductCard } from '../components/ProductCard';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Skeleton } from '../components/ui/skeleton';
 import { I18nLayout } from '../layouts/I18nLayout';
 import { apiRequest } from '../lib/api-client';
-import { formatMMK } from '../lib/format';
 
 const PAGE_SIZE = 12;
-
 type SortField = 'name' | 'price' | 'createdAt';
-
 const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
   { value: 'createdAt', labelKey: 'catalogPage.sortNewest' },
   { value: 'name', labelKey: 'catalogPage.sortName' },
@@ -17,7 +24,6 @@ const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
 
 function CatalogContent() {
   const { t } = useI18n();
-
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [page, setPage] = useState(1);
@@ -25,7 +31,6 @@ function CatalogContent() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -33,24 +38,22 @@ function CatalogContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
-    const id = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (search.trim() !== debouncedSearch) {
         setDebouncedSearch(search.trim());
         setPage(1);
       }
     }, 300);
-    return () => clearTimeout(id);
+    return () => clearTimeout(timer);
   }, [search, debouncedSearch]);
 
   useEffect(() => {
     let cancelled = false;
     apiRequest<CategoryResponse[]>('/api/categories')
-      .then((categories) => {
-        if (!cancelled) setCategories(categories);
+      .then((data) => {
+        if (!cancelled) setCategories(data);
       })
-      .catch(() => {
-        // Categories are optional for browsing.
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -60,16 +63,15 @@ function CatalogContent() {
     let cancelled = false;
     setLoading(true);
     setError(false);
-
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('pageSize', String(PAGE_SIZE));
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+      sortBy,
+      sortOrder,
+    });
     if (debouncedSearch) params.set('search', debouncedSearch);
     if (categoryId) params.set('categoryId', categoryId);
-    params.set('sortBy', sortBy);
-    params.set('sortOrder', sortOrder);
-
-    apiRequest<Paginated<ProductSummary>>(`/api/products?${params.toString()}`)
+    apiRequest<Paginated<ProductSummary>>(`/api/products?${params}`)
       .then((data) => {
         if (cancelled) return;
         setProducts(data.items ?? []);
@@ -77,15 +79,15 @@ function CatalogContent() {
         setTotalPages(data.totalPages ?? 1);
       })
       .catch(() => {
-        if (cancelled) return;
-        setError(true);
-        setProducts([]);
-        setTotalPages(0);
+        if (!cancelled) {
+          setError(true);
+          setProducts([]);
+          setTotalPages(0);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-
     return () => {
       cancelled = true;
     };
@@ -96,150 +98,206 @@ function CatalogContent() {
     if (error) return t('notifications.loadFailed');
     if (products.length === 0) return t('catalog.noResults');
     return t('catalogPage.showing', { count: products.length, total });
-  }, [loading, error, products.length, total, t]);
+  }, [error, loading, products.length, t, total]);
+  const filtersActive = Boolean(
+    search || categoryId || sortBy !== 'createdAt' || sortOrder !== 'desc',
+  );
+  const resetFilters = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    setCategoryId('');
+    setSortBy('createdAt');
+    setSortOrder('desc');
+    setPage(1);
+  };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">{t('layout.nav.catalog')}</h1>
-      <p className="text-neutral-600 mb-8">{t('app.tagline')}</p>
+    <div className="space-y-7">
+      <section className="rounded-3xl bg-linear-to-br from-primary to-primary/80 px-5 py-8 text-primary-foreground shadow-sm sm:px-8 sm:py-10">
+        <p className="mb-2 text-sm font-bold uppercase tracking-[0.16em] text-primary-foreground/70">
+          {t('app.name')}
+        </p>
+        <h1 className="max-w-2xl text-3xl font-black tracking-tight sm:text-4xl">
+          {t('commerce.catalogHeading')}
+        </h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/85 sm:text-base">
+          {t('app.tagline')}
+        </p>
+      </section>
 
-      <div className="flex flex-col md:flex-row gap-3 mb-6">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-          }}
-          placeholder={t('catalogPage.searchPlaceholder')}
-          className="flex-1 border border-neutral-300 rounded px-3 py-2 text-sm"
-          aria-label={t('catalogPage.searchPlaceholder')}
-        />
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row">
+          <label className="relative block flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('catalogPage.searchPlaceholder')}
+              className="pl-10"
+              aria-label={t('catalogPage.searchPlaceholder')}
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3 sm:flex">
+            <label className="relative min-w-0 sm:w-52">
+              <span className="sr-only">{t('catalogPage.filterCategory')}</span>
+              <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Select
+                value={categoryId}
+                onChange={(event) => {
+                  setCategoryId(event.target.value);
+                  setPage(1);
+                }}
+                className="pl-9"
+                aria-label={t('catalogPage.filterCategory')}
+              >
+                <option value="">{t('catalogPage.allCategories')}</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name} ({category.productCount})
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="relative min-w-0 sm:w-44">
+              <span className="sr-only">{t('catalogPage.sortBy')}</span>
+              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Select
+                value={sortBy}
+                onChange={(event) => {
+                  setSortBy(event.target.value as SortField);
+                  setPage(1);
+                }}
+                className="pl-9"
+                aria-label={t('catalogPage.sortBy')}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setSortOrder((value) => (value === 'asc' ? 'desc' : 'asc'));
+              setPage(1);
+            }}
+            aria-label={t('catalogPage.sortOrder')}
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+            <span className="hidden sm:inline">{t('catalogPage.sortOrder')}</span>
+          </Button>
+        </div>
+        {categories.length > 0 && (
+          <div
+            className="mt-4 flex gap-2 overflow-x-auto pb-1"
+            aria-label={t('catalogPage.filterCategory')}
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={categoryId ? 'outline' : 'secondary'}
+              onClick={() => {
+                setCategoryId('');
+                setPage(1);
+              }}
+            >
+              {t('catalogPage.allCategories')}
+            </Button>
+            {categories.map((category) => (
+              <Button
+                type="button"
+                key={category.id}
+                size="sm"
+                variant={categoryId === category.id ? 'secondary' : 'outline'}
+                className="shrink-0"
+                onClick={() => {
+                  setCategoryId(category.id);
+                  setPage(1);
+                }}
+              >
+                {category.name}
+              </Button>
+            ))}
+          </div>
+        )}
+        {filtersActive && (
+          <div className="mt-4">
+            <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
+              <RotateCcw className="size-4" />
+              {t('catalog.reset')}
+            </Button>
+          </div>
+        )}
+      </section>
 
-        <select
-          value={categoryId}
-          onChange={(e) => {
-            setCategoryId(e.target.value);
-            setPage(1);
-          }}
-          className="border border-neutral-300 rounded px-3 py-2 text-sm"
-          aria-label={t('catalogPage.filterCategory')}
-        >
-          <option value="">{t('catalogPage.allCategories')}</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({c.productCount})
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={sortBy}
-          onChange={(e) => {
-            setSortBy(e.target.value as SortField);
-            setPage(1);
-          }}
-          className="border border-neutral-300 rounded px-3 py-2 text-sm"
-          aria-label={t('catalogPage.sortBy')}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {t(o.labelKey)}
-            </option>
-          ))}
-        </select>
-
-        <button
-          type="button"
-          onClick={() => {
-            setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-            setPage(1);
-          }}
-          className="border border-neutral-300 rounded px-3 py-2 text-sm"
-          aria-label={t('catalogPage.sortOrder')}
-        >
-          {sortOrder === 'asc' ? '\u2191' : '\u2193'}
-        </button>
+      <div>
+        <h2 className="text-xl font-black">{t('catalog.title')}</h2>
+        <p role={error ? 'alert' : 'status'} className="mt-1 text-sm text-muted-foreground">
+          {showingText}
+        </p>
       </div>
-
-      <p role={error ? 'alert' : 'status'} className="text-sm text-neutral-500 mb-4">
-        {showingText}
-      </p>
-
       {loading && products.length === 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="border rounded-lg p-4 animate-pulse h-48 bg-neutral-100" />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div
+              key={index}
+              className="overflow-hidden rounded-2xl border border-border bg-card p-4"
+            >
+              <Skeleton className="aspect-square w-full" />
+              <Skeleton className="mt-4 h-3 w-20" />
+              <Skeleton className="mt-3 h-5 w-4/5" />
+              <Skeleton className="mt-3 h-6 w-2/5" />
+              <Skeleton className="mt-5 h-9 w-full" />
+            </div>
           ))}
         </div>
-      ) : products.length === 0 ? null : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((p) => (
-            <article
-              key={p.id}
-              className="border rounded-lg p-4 bg-white hover:border-primary transition-colors"
-            >
-              <div className="aspect-square bg-neutral-100 rounded mb-3 overflow-hidden">
-                {p.thumbnailUrl ? (
-                  <img
-                    src={p.thumbnailUrl}
-                    alt={p.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-400 text-sm">
-                    {t('catalogPage.noImage')}
-                  </div>
-                )}
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{p.name}</h3>
-              <p className="text-primary font-bold mb-1">{formatMMK(p.price)}</p>
-              <p className="text-xs text-neutral-500 mb-2">{p.storeName}</p>
-              {p.categoryName ? (
-                <p className="text-xs text-neutral-400 mb-2">{p.categoryName}</p>
-              ) : null}
-              <p className="text-xs">
-                {p.stock > 0 ? (
-                  <span className="text-green-600">
-                    {t('catalogPage.inStock', { count: p.stock })}
-                  </span>
-                ) : (
-                  <span className="text-red-600">{t('product.outOfStock')}</span>
-                )}
-              </p>
-              <a
-                href={`#/products/${p.id}`}
-                className="mt-2 inline-block text-sm text-primary hover:underline"
-              >
-                {t('common.view')}
-              </a>
-            </article>
+      ) : products.length === 0 ? (
+        <section className="rounded-2xl border border-dashed border-border bg-card px-6 py-14 text-center">
+          <Search className="mx-auto size-9 text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-bold">{t('commerce.emptyCatalogHint')}</h2>
+          {filtersActive && (
+            <Button type="button" className="mt-5" variant="outline" onClick={resetFilters}>
+              {t('catalog.reset')}
+            </Button>
+          )}
+        </section>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       )}
-
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-8">
-          <button
+        <nav
+          className="flex items-center justify-center gap-3 pt-2"
+          aria-label={t('pagination.goToPage')}
+        >
+          <Button
             type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            variant="outline"
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
             disabled={loading || page <= 1}
-            className="border border-neutral-300 rounded px-3 py-2 text-sm disabled:opacity-50"
           >
             {t('pagination.previous')}
-          </button>
-          <span className="text-sm text-neutral-600">
+          </Button>
+          <span className="text-sm font-semibold text-muted-foreground">
             {page} / {totalPages}
           </span>
-          <button
+          <Button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            variant="outline"
+            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
             disabled={loading || page >= totalPages}
-            className="border border-neutral-300 rounded px-3 py-2 text-sm disabled:opacity-50"
           >
             {t('pagination.next')}
-          </button>
-        </div>
+          </Button>
+        </nav>
       )}
     </div>
   );

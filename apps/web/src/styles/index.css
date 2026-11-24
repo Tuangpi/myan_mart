@@ -2,6 +2,19 @@
 
 @theme {
   --font-sans: 'Noto Sans Myanmar', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-background: oklch(0.94 0.025 82);
+  --color-foreground: oklch(0.25 0.035 274);
+  --color-card: oklch(0.985 0.018 83);
+  --color-card-foreground: oklch(0.25 0.035 274);
+  --color-primary: oklch(0.35 0.105 274);
+  --color-primary-foreground: oklch(0.99 0.006 85);
+  --color-secondary: oklch(0.78 0.12 76);
+  --color-secondary-foreground: oklch(0.29 0.07 76);
+  --color-muted: oklch(0.91 0.02 82);
+  --color-muted-foreground: oklch(0.5 0.025 274);
+  --color-border: oklch(0.83 0.03 80);
+  --color-input: oklch(0.8 0.03 80);
+  --color-destructive: oklch(0.5 0.16 30);
 }
 
 html {
@@ -12,4 +25,18 @@ body {
   margin: 0;
   min-height: 100dvh;
   font-family: var(--font-sans);
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
 }

@@ -20,6 +20,18 @@
     "name": "MyanMart",
     "tagline": "A Myanmar-first multi-vendor marketplace."
   },
+  "commerce": {
+    "trustBar": "Cash on delivery · Secure manual payments · Multi-seller marketplace",
+    "catalogHeading": "Find everyday essentials from trusted local shops.",
+    "emptyCatalogHint": "Try a different search or clear your filters to browse everything.",
+    "bagLabel": "Your shopping bag",
+    "emptyCartHint": "Add something you love, then come back here when you are ready to order.",
+    "atCheckout": "Calculated at checkout",
+    "deliveryAtCheckout": "Delivery is calculated from your order at checkout.",
+    "deliveryAssurance": "Delivery fees are confirmed at checkout.",
+    "stockAssurance": "Stock is checked again when you order.",
+    "secureCheckout": "Secure checkout"
+  },
   "layout": {
     "nav": {
       "home": "Home",
@@ -49,7 +61,45 @@
     "privacyPolicy": "Privacy policy",
     "termsOfService": "Terms of service",
     "signOut": "Sign out",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "createAccount": "Create your MyanMart account",
+    "signInDescription": "Sign in to manage your cart, orders, and account.",
+    "signUpDescription": "Create an account to start shopping on MyanMart.",
+    "newCustomer": "New to MyanMart?",
+    "alreadyHaveAccount": "Already have an account?",
+    "invalidCredentials": "Your email or password is incorrect.",
+    "emailExists": "An account with this email already exists.",
+    "failed": "We could not complete that request. Please try again."
+  },
+  "account": {
+    "title": "My account",
+    "menu": "Account menu",
+    "profile": "Profile",
+    "settings": "Settings",
+    "becomeSeller": "Become a seller",
+    "profileDescription": "Your account information and approved store details.",
+    "settingsDescription": "Manage your language preference and signed-in session.",
+    "details": "Account details",
+    "role": "Role",
+    "store": "Approved store",
+    "notProvided": "Not provided",
+    "language": "Language",
+    "session": "Session"
+  },
+  "sellerApplication": {
+    "title": "Become a seller",
+    "description": "Apply for a storefront. An administrator must approve it before you can publish products.",
+    "formTitle": "Store application",
+    "slug": "Store URL name (optional)",
+    "logoUrl": "Logo URL (optional)",
+    "submit": "Submit application",
+    "status": "Application status",
+    "pending": "Your application is pending administrator review.",
+    "contactSupport": "This storefront cannot publish products. Contact marketplace support for help.",
+    "noDescription": "No store description provided.",
+    "loadFailed": "Could not load your storefront application.",
+    "exists": "You already have a storefront application.",
+    "failed": "Could not submit your application. Check the details and try again."
   },
   "catalog": {
     "title": "Catalog",
@@ -78,7 +128,7 @@
   },
   "cart": {
     "added": "Added to cart.",
-    "signInRequired": "Please sign in to use your cart.",
+    "signInRequired": "Please sign in to continue to checkout.",
     "stockChanged": "Stock has changed. Please check the available quantity and try again.",
     "unavailable": "This product is no longer available. Please remove it from your cart.",
     "update": "Update quantity",
@@ -95,7 +145,8 @@
     "remove": "Remove",
     "quantity": "Quantity",
     "noItems": "Your cart is empty.",
-    "updateFailed": "Failed to update cart."
+    "updateFailed": "Failed to update cart.",
+    "guestNotice": "Your cart is saved on this device. Sign in at checkout to place your order."
   },
   "ordersPage": {
     "title": "My orders",

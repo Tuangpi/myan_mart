@@ -56,6 +56,7 @@ describe('payment review UI', () => {
   it('routes admins to review, confirms verification and reloads', async () => {
     window.location.hash = '#/payments/admin';
     fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true, data: { id: 'admin', name: 'Admin', email: 'admin@example.com', phone: null, role: 'ADMIN', status: 'ACTIVE' } }), { status: 200 }))
       .mockResolvedValueOnce(response())
       .mockResolvedValueOnce(response([]))
       .mockResolvedValueOnce(response([]));
@@ -66,8 +67,8 @@ describe('payment review UI', () => {
       '/api/receipt',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Verify payment' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(fetchMock.mock.calls[1]).toEqual([
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    expect(fetchMock.mock.calls[2]).toEqual([
       '/api/admin/payment-orders/order-1/payments/p1/review',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ decision: 'VERIFIED' }) }),
     ]);

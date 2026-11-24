@@ -103,7 +103,9 @@ afterEach(() => {
 describe('checkout', () => {
   it('routes to checkout and renders the server quote', async () => {
     window.location.hash = '#/checkout';
-    fetchMock.mockResolvedValueOnce(response(quote));
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(url === '/api/me' ? response({ id: 'u1', name: 'Buyer', email: 'buyer@example.com', phone: null, role: 'BUYER', status: 'ACTIVE' }) : response(quote)),
+    );
     render(<App />);
     expect(await screen.findByText('Total: 5,500 MMK')).toBeInTheDocument();
     expect(screen.getByText('Delivery fee: 2,500 MMK')).toBeInTheDocument();

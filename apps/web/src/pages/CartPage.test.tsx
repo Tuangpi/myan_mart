@@ -7,26 +7,6 @@ import { App } from '../App';
 
 const fetchMock = vi.fn();
 const empty: CartResponse = { items: [], itemCount: 0, subtotal: 0 };
-const cart: CartResponse = {
-  items: [
-    {
-      id: 'item',
-      productId: 'product',
-      name: 'Tea',
-      slug: 'tea',
-      thumbnailUrl: null,
-      storeName: 'Tea shop',
-      storeSlug: 'tea-shop',
-      quantity: 2,
-      stock: 5,
-      available: true,
-      unitPrice: 1500,
-      subtotal: 3000,
-    },
-  ],
-  itemCount: 2,
-  subtotal: 3000,
-};
 const product: ProductDetail = {
   id: 'product',
   name: 'Tea',
@@ -71,7 +51,9 @@ afterEach(() => {
 describe('shopping cart UI', () => {
   it('routes to an empty cart and offers shopping navigation', async () => {
     window.location.hash = '#/cart';
-    fetchMock.mockResolvedValue(response(empty));
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(url === '/api/me' ? response({ id: 'u1', name: 'Buyer', email: 'buyer@example.com', phone: null, role: 'BUYER', status: 'ACTIVE' }) : response(empty)),
+    );
     render(<App />);
     expect(await screen.findByText('Your cart is empty.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Continue shopping' })).toHaveAttribute('href', '#/');
@@ -81,8 +63,9 @@ describe('shopping cart UI', () => {
     );
   });
 
-  it('renders current prices, edits quantities and removes items', async () => {
-    fetchMock.mockResolvedValueOnce(response(cart));
+  it('renders current guest prices, edits quantities and removes items', async () => {
+    localStorage.setItem('myanmart.guest-cart', JSON.stringify([{ productId: 'product', quantity: 2 }]));
+    fetchMock.mockImplementation(() => Promise.resolve(response(product)));
     render(<CartPage />);
     const quantity = await screen.findByRole('spinbutton', { name: 'Quantity — Tea' });
     expect(screen.getByText('1,500 MMK')).toBeInTheDocument();
@@ -90,58 +73,36 @@ describe('shopping cart UI', () => {
       'href',
       '#/stores/tea-shop',
     );
-    fetchMock.mockResolvedValueOnce(
-      response({
-        ...cart,
-        items: [{ ...cart.items[0], quantity: 3, subtotal: 4500 }],
-        subtotal: 4500,
-      }),
-    );
     fireEvent.change(quantity, { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: 'Update quantity' }));
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenLastCalledWith(
-        '/api/cart/items/item',
-        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ quantity: 3 }) }),
-      ),
-    );
     await waitFor(() => expect(screen.getByRole('spinbutton')).toHaveValue(3));
-    fetchMock.mockResolvedValueOnce(response(empty));
+    expect(JSON.parse(localStorage.getItem('myanmart.guest-cart') ?? '[]')).toEqual([{ productId: 'product', quantity: 3 }]);
     fireEvent.click(screen.getByRole('button', { name: 'Remove — Tea' }));
     expect(await screen.findByText('Your cart is empty.')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/cart/items/item',
-      expect.objectContaining({ method: 'DELETE' }),
-    );
+    expect(localStorage.getItem('myanmart.guest-cart')).toBeNull();
   });
 
-  it('shows authentication errors and supports retry', async () => {
-    fetchMock.mockResolvedValueOnce(response(null, 401));
+  it('shows unavailable local items', async () => {
+    localStorage.setItem('myanmart.guest-cart', JSON.stringify([{ productId: 'missing', quantity: 1 }]));
+    fetchMock.mockResolvedValueOnce(response(null, 404));
     render(<CartPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Please sign in');
-    fetchMock.mockResolvedValueOnce(response(empty));
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('Your cart is empty.')).toBeInTheDocument();
+    expect(await screen.findByText('This product is no longer available. Please remove it from your cart.')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toBeDisabled();
   });
 
-  it('refreshes changed stock after a conflict and keeps the error visible', async () => {
-    fetchMock.mockResolvedValueOnce(response(cart));
+  it('shows current guest stock changes', async () => {
+    localStorage.setItem('myanmart.guest-cart', JSON.stringify([{ productId: 'product', quantity: 2 }]));
+    fetchMock.mockResolvedValueOnce(response({ ...product, stock: 0 }));
     render(<CartPage />);
-    await screen.findByRole('spinbutton');
-    fetchMock
-      .mockResolvedValueOnce(response(null, 409))
-      .mockResolvedValueOnce(response({ ...cart, items: [{ ...cart.items[0], stock: 0 }] }));
-    fireEvent.click(screen.getByRole('button', { name: 'Update quantity' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Stock has changed');
-    await waitFor(() => expect(screen.getByRole('spinbutton')).toBeDisabled());
+    expect(await screen.findByText('Stock has changed. Please check the available quantity and try again.')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Remove — Tea' })).toBeEnabled();
   });
 
   it('disables edits for unavailable items and supports Burmese messages', async () => {
     localStorage.setItem('myanmart.locale', 'my');
-    fetchMock.mockResolvedValueOnce(
-      response({ ...cart, items: [{ ...cart.items[0], available: false }] }),
-    );
+    localStorage.setItem('myanmart.guest-cart', JSON.stringify([{ productId: 'product', quantity: 1 }]));
+    fetchMock.mockResolvedValueOnce(response({ ...product, status: 'ARCHIVED' }));
     render(<CartPage />);
     expect(
       await screen.findByText('ဤပစ္စည်းကို မရရှိနိုင်တော့ပါ။ ဈေးခြင်းမှ ဖယ်ရှားပါ။'),
@@ -149,33 +110,42 @@ describe('shopping cart UI', () => {
     expect(screen.getByRole('spinbutton')).toBeDisabled();
   });
 
-  it('adds a product with credentials and displays success', async () => {
-    fetchMock.mockResolvedValueOnce(response(cart));
+  it('adds a product to a local guest cart and displays success', async () => {
     render(<ProductDetailPage product={product} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
     expect(await screen.findByText('Added to cart.')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/cart/items',
-      expect.objectContaining({
-        method: 'POST',
-        credentials: 'include',
-        body: JSON.stringify({ productId: 'product', quantity: 1 }),
-      }),
-    );
+    expect(JSON.parse(localStorage.getItem('myanmart.guest-cart') ?? '[]')).toEqual([
+      { productId: 'product', quantity: 1 },
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('reports add failures and prevents out-of-stock adds', async () => {
-    fetchMock.mockResolvedValueOnce(response(null, 401));
-    const view = render(<ProductDetailPage product={product} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to cart' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Please sign in');
-    view.unmount();
+  it('prevents out-of-stock guest adds', async () => {
     render(<ProductDetailPage product={{ ...product, stock: 0 }} />);
     expect(screen.getByRole('button', { name: 'Out of stock' })).toBeDisabled();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('myanmart.guest-cart')).toBeNull();
+  });
+
+  it('hydrates, edits, and removes a guest cart from current public product data', async () => {
+    localStorage.setItem('myanmart.guest-cart', JSON.stringify([{ productId: 'product', quantity: 2 }]));
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/products/product') return Promise.resolve(response(product));
+      return Promise.resolve(response(null, 401));
+    });
+    render(<CartPage />);
+    expect(await screen.findByText('Your cart is saved on this device. Sign in at checkout to place your order.')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toHaveValue(2);
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Update quantity' }));
+    await waitFor(() => expect(screen.getByRole('spinbutton')).toHaveValue(3));
+    expect(JSON.parse(localStorage.getItem('myanmart.guest-cart') ?? '[]')).toEqual([{ productId: 'product', quantity: 3 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove — Tea' }));
+    expect(await screen.findByText('Your cart is empty.')).toBeInTheDocument();
+    expect(localStorage.getItem('myanmart.guest-cart')).toBeNull();
   });
 
   it('reports network failures without showing an empty cart', async () => {
+    localStorage.setItem('myanmart.guest-cart', JSON.stringify([{ productId: 'product', quantity: 1 }]));
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     render(<CartPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to update cart.');

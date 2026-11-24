@@ -7,6 +7,22 @@ import {
 } from '@myanmart/shared';
 import { I18nLayout } from '../layouts/I18nLayout';
 import { ApiRequestError, apiRequest, jsonRequest } from '../lib/api-client';
+import { AccountPageHeader } from '../components/account-page-header';
+import { Alert } from '../components/ui/alert';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Textarea } from '../components/ui/textarea';
+
+function statusVariant(status: string) {
+  if (status === 'ACTIVE' || status === 'APPROVED') return 'success' as const;
+  if (status === 'ARCHIVED' || status === 'REJECTED' || status === 'SUSPENDED')
+    return 'destructive' as const;
+  if (status === 'PENDING') return 'warning' as const;
+  return 'secondary' as const;
+}
 
 interface SellerProduct {
   id: string;
@@ -129,29 +145,39 @@ function SellerProductsContent() {
       });
     });
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <h2 className="text-2xl font-bold">{text('title')}</h2>
-      {error && (
-        <p role="alert" className="text-red-700">
-          {text(error)}
-        </p>
-      )}
+    <div className="mx-auto max-w-6xl space-y-6">
+      <AccountPageHeader
+        eyebrow={t('sellerProducts.title')}
+        title={text('title')}
+        description={t('app.tagline')}
+      />
+      {error && <Alert variant="destructive">{text(error)}</Alert>}
       {loading ? (
-        <p role="status">{text('loading')}</p>
+        <div role="status" className="grid gap-4 md:grid-cols-2">
+          <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+          <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+        </div>
       ) : (
         <>
-          <p>
-            {text('storeStatus')}: {text(status || 'noStore')}
-          </p>
-          {status !== 'APPROVED' && <p>{text('approvalRequired')}</p>}
-          <form onSubmit={save} className="rounded border bg-white p-4">
-            <h3 className="mb-3 text-lg font-semibold">{text(editing ? 'edit' : 'create')}</h3>
+          <Alert
+            variant={status === 'APPROVED' ? 'success' : 'default'}
+            className="flex flex-wrap items-center justify-between gap-3"
+          >
+            <span>
+              {text('storeStatus')}: <strong>{text(status || 'noStore')}</strong>
+            </span>
+            {status !== 'APPROVED' && <span>{text('approvalRequired')}</span>}
+          </Alert>
+          <form onSubmit={save} className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <div className="mb-5">
+              <h3 className="text-lg font-bold">{text(editing ? 'edit' : 'create')}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{text('image')}</p>
+            </div>
             <fieldset disabled={busy || !status} className="grid gap-4 sm:grid-cols-2">
               {(['name', 'slug', 'price', 'stock'] as const).map((key) => (
                 <label key={key} className="grid gap-1">
                   {text(key)}
-                  <input
-                    className="rounded border p-2"
+                  <Input
                     value={form[key]}
                     required={key !== 'slug'}
                     type={key === 'price' || key === 'stock' ? 'number' : 'text'}
@@ -166,8 +192,7 @@ function SellerProductsContent() {
               ))}
               <label className="grid gap-1">
                 {text('description')}
-                <textarea
-                  className="rounded border p-2"
+                <Textarea
                   maxLength={5000}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -175,8 +200,7 @@ function SellerProductsContent() {
               </label>
               <label className="grid gap-1">
                 {text('category')}
-                <select
-                  className="rounded border p-2"
+                <Select
                   value={form.categoryId}
                   onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
                 >
@@ -186,83 +210,109 @@ function SellerProductsContent() {
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 {text('image')}
-                <input
+                <Input
                   key={fileKey}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
               </label>
-              <div className="flex gap-4">
-                <button type="submit" className="rounded border px-4 py-2">
-                  {text('save')}
-                </button>
-                <button type="button" onClick={reset}>
+              <div className="flex flex-wrap gap-3">
+                <Button type="submit">{text('save')}</Button>
+                <Button type="button" variant="ghost" onClick={reset}>
                   {text('cancel')}
-                </button>
+                </Button>
               </div>
             </fieldset>
           </form>
-          {!items.length && <p>{text('empty')}</p>}
-          <ul className="grid gap-4 sm:grid-cols-2">
+          {!items.length && (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                {text('empty')}
+              </CardContent>
+            </Card>
+          )}
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((product) => (
-              <li key={product.id} className="space-y-2 rounded border bg-white p-4">
-                <h3 className="font-semibold">{product.name}</h3>
-                <p>
-                  {product.price.toLocaleString()} MMK · {text('stock')}: {product.stock}
-                </p>
-                <p>
-                  {text(product.status)} · {text('imageCount')}: {product.images.length}
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <button
-                    disabled={busy}
-                    onClick={() => {
-                      setEditing(product.id);
-                      setForm({
-                        name: product.name,
-                        slug: product.slug,
-                        description: product.description ?? '',
-                        price: String(product.price),
-                        stock: String(product.stock),
-                        categoryId: product.categoryId ?? '',
-                      });
-                      setFile(null);
-                      setFileKey((n) => n + 1);
-                    }}
-                  >
-                    {text('edit')}
-                  </button>
-                  <button
-                    disabled={busy || status !== 'APPROVED' || product.status === 'ACTIVE'}
-                    onClick={() => changeStatus(product, 'ACTIVE')}
-                  >
-                    {text('publish')}
-                  </button>
-                  <button
-                    disabled={busy || product.status === 'ARCHIVED'}
-                    onClick={() => changeStatus(product, 'ARCHIVED')}
-                  >
-                    {text('archive')}
-                  </button>
-                </div>
+              <li key={product.id}>
+                <Card className="h-full">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <CardTitle>{product.name}</CardTitle>
+                      <Badge variant={statusVariant(product.status)}>{text(product.status)}</Badge>
+                    </div>
+                    <CardDescription>
+                      {product.price.toLocaleString()} MMK · {text('stock')}: {product.stock}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {text('imageCount')}: {product.images.length}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditing(product.id);
+                          setForm({
+                            name: product.name,
+                            slug: product.slug,
+                            description: product.description ?? '',
+                            price: String(product.price),
+                            stock: String(product.stock),
+                            categoryId: product.categoryId ?? '',
+                          });
+                          setFile(null);
+                          setFileKey((n) => n + 1);
+                        }}
+                      >
+                        {text('edit')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={busy || status !== 'APPROVED' || product.status === 'ACTIVE'}
+                        onClick={() => changeStatus(product, 'ACTIVE')}
+                      >
+                        {text('publish')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy || product.status === 'ARCHIVED'}
+                        onClick={() => changeStatus(product, 'ARCHIVED')}
+                      >
+                        {text('archive')}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </li>
             ))}
           </ul>
-          <nav aria-label={text('pagination')} className="flex gap-4">
-            <button disabled={busy || page <= 1} onClick={() => setPage(page - 1)}>
+          <nav aria-label={text('pagination')} className="flex items-center justify-center gap-3">
+            <Button
+              variant="outline"
+              disabled={busy || page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
               {text('previous')}
-            </button>
-            <span>
+            </Button>
+            <span className="text-sm text-muted-foreground">
               {page} / {Math.max(1, pages)}
             </span>
-            <button disabled={busy || page >= pages} onClick={() => setPage(page + 1)}>
+            <Button
+              variant="outline"
+              disabled={busy || page >= pages}
+              onClick={() => setPage(page + 1)}
+            >
               {text('next')}
-            </button>
+            </Button>
           </nav>
         </>
       )}

@@ -9,6 +9,12 @@ import { OrdersPage } from './pages/OrdersPage';
 import { PaymentReviewPage } from './pages/PaymentReviewPage';
 import { AdminPage } from './pages/AdminPage';
 import { SellerOrdersPage } from './pages/SellerOrdersPage';
+import { AuthPage } from './pages/AuthPage';
+import { SellerApplicationPage } from './pages/SellerApplicationPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
+import { AuthProvider } from './contexts/auth-context';
+import { RequireAuth } from './components/RequireAuth';
 
 function ProductRoute() {
   const { id = '' } = useParams();
@@ -36,21 +42,28 @@ function PaymentReviewRoute() {
 
 export function App() {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<CatalogPage />} />
-        <Route path="/products/:id" element={<ProductRoute />} />
-        <Route path="/stores/:slug" element={<StoreRoute />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/orders" element={<OrdersPage />} />
-        <Route path="/orders/:id" element={<OrderRoute />} />
-        <Route path="/seller/products" element={<SellerProductsPage />} />
-        <Route path="/seller/orders" element={<SellerOrdersPage />} />
-        <Route path="/payments/:role" element={<PaymentReviewRoute />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="*" element={<CatalogPage />} />
-      </Routes>
-    </HashRouter>
+    <AuthProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<CatalogPage />} />
+          <Route path="/products/:id" element={<ProductRoute />} />
+          <Route path="/stores/:slug" element={<StoreRoute />} />
+          <Route path="/sign-in" element={<AuthPage mode="sign-in" />} />
+          <Route path="/sign-up" element={<AuthPage mode="sign-up" />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
+          <Route path="/orders" element={<RequireAuth><OrdersPage /></RequireAuth>} />
+          <Route path="/orders/:id" element={<RequireAuth><OrderRoute /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+          <Route path="/seller/apply" element={<RequireAuth><SellerApplicationPage /></RequireAuth>} />
+          <Route path="/seller/products" element={<RequireAuth><SellerProductsPage /></RequireAuth>} />
+          <Route path="/seller/orders" element={<RequireAuth><SellerOrdersPage /></RequireAuth>} />
+          <Route path="/payments/:role" element={<RequireAuth><PaymentReviewRoute /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+          <Route path="*" element={<CatalogPage />} />
+        </Routes>
+      </HashRouter>
+    </AuthProvider>
   );
 }

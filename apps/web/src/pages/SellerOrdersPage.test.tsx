@@ -43,6 +43,9 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   fetchMock.mockImplementation((path: string, options: RequestInit) => {
+    if (path === '/api/me') {
+      return Promise.resolve(response({ id: 'seller', name: 'Seller', email: 'seller@example.com', phone: null, role: 'SELLER', status: 'ACTIVE' }));
+    }
     if (options.method === 'PATCH') return Promise.resolve(response({}));
     if (path.includes('sales-summary'))
       return Promise.resolve(
@@ -73,7 +76,7 @@ describe('seller order board', () => {
     const button = screen.getByRole('button', { name: 'Processing' });
     vi.mocked(window.confirm).mockReturnValueOnce(false);
     fireEvent.click(button);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     fireEvent.click(button);
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -85,7 +88,7 @@ describe('seller order board', () => {
         }),
       ),
     );
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(7));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(8));
   });
   it('edits instructions and paginates', async () => {
     render(<SellerOrdersPage />);

@@ -90,7 +90,9 @@ afterEach(() => {
 describe('buyer orders', () => {
   it('routes to history and displays seller groups, snapshots, payment and totals', async () => {
     window.location.hash = '#/orders';
-    fetchMock.mockResolvedValueOnce(response(list));
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(url === '/api/me' ? response({ id: 'u1', name: 'Buyer', email: 'buyer@example.com', phone: null, role: 'BUYER', status: 'ACTIVE' }) : response(list)),
+    );
     render(<App />);
     expect(await screen.findByRole('link', { name: 'MM-ONE' })).toHaveAttribute(
       'href',
@@ -121,6 +123,7 @@ describe('buyer orders', () => {
   it('routes to detail, shows delivery info and confirms before cancelling', async () => {
     window.location.hash = '#/orders/order-1';
     fetchMock
+      .mockResolvedValueOnce(response({ id: 'u1', name: 'Buyer', email: 'buyer@example.com', phone: null, role: 'BUYER', status: 'ACTIVE' }))
       .mockResolvedValueOnce(response(order))
       .mockResolvedValueOnce(response({ ...order, status: 'CANCELLED', canCancel: false }));
     render(<App />);
@@ -128,7 +131,7 @@ describe('buyer orders', () => {
     expect(screen.getByText('Call first')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep order' }));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel order' }));
     expect(await screen.findByText('This order has been cancelled.')).toBeInTheDocument();

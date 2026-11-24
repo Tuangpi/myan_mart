@@ -153,6 +153,11 @@ export interface AuthUser {
   role: UserRole;
   status: string;
   storeId?: string | null;
+  store?: {
+    id: string;
+    name: string;
+    status: StoreStatus;
+  } | null;
 }
 
 export interface HealthResponse {
